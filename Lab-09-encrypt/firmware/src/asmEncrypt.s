@@ -10,7 +10,7 @@
 .type nameStr,%gnu_unique_object
     
 /*** STUDENTS: Change the next line to your name!  **/
-nameStr: .asciz "Inigo Montoya"  
+nameStr: .asciz "Edward Guerra Ramirez"  
 .align
  
 /* initialize a global variable that C can access to print the nameStr */
@@ -86,11 +86,55 @@ where:
 asmEncrypt:   
 
     // save the caller's registers, as required by the ARM calling convention
-    push {r4-r11,LR}
+    push {r4-r11,LR} 
     
     /* YOUR asmEncrypt CODE BELOW THIS LINE! VVVVVVVVVVVVVVVVVVVVV  */
 
+    ldr r2, =cipherText        /* r2 will point to the destination buffer where encrypted characters are stored */
+    mov r3, r0                 /* r3 holds the current position in the input string while r0 originally had the pointer */
+    mov r4, r1                 /* r4 holds the encryption key (the shift value from 0 to 25) */
 
+    encrypt_loop:
+    ldrb r5, [r3], #1          /* Loads the current character from the input string into r5, and moves r3 to the next char */
+    cmp r5, #0                 /* Checks if we've reached the end of the input string (null terminator '\0') */
+    beq done                   /* If yes, it will break out of the loop as all characters have been processed */
+
+    /* Checks if the current character is an uppercase letter ('A' to 'Z') */
+    mov r6, r5                 /* Copies the character into r6 to work with it */
+    sub r6, #65                /* Converts the ASCII to 0-based index for A-Z (e.g., 'A' becomes 0, 'B' becomes 1, ...) */
+    cmp r6, #25                /* If the result is > 25, then it wasn?t in range A-Z */
+    bhi check_lowercase        /* If the character wasn't uppercase, it'll check if it's lowercase */
+
+    /* Encrypts the uppercase letter using Caesar cipher */
+    add r6, r4                 /* Applies the shift key to the index */
+    mov r7, #26                /* Uses 26 because the alphabet has 26 letters needed for wrap-around (modulo) */
+    udiv r8, r6, r7            /* Divides to prepare for modulus operation (r8 = floor(r6 / 26)) */
+    mls r6, r8, r7, r6         /* Efficient modulus: r6 = r6 - (r8 * 26) = r6 % 26 */
+    add r5, r6, #65            /* Converts the shifted index back to ASCII uppercase letter */
+    b store                    /* Goes to store the encrypted character */
+
+    check_lowercase:
+    mov r6, r5                 /* Prepares to check if character is lowercase */
+    sub r6, #97                /* Converts ASCII to 0-based index for a-z */
+    cmp r6, #25                /* Checks if it's outside the lowercase letter range */
+    bhi store                  /* If it's not a lowercase letter, leave it unchanged and goes to store it */
+
+    /* Encrypts lowercase letter using Caesar cipher */
+    add r6, r4                 /* Applies the shift key */
+    mov r7, #26
+    udiv r8, r6, r7            /* Prepares for wrap-around */
+    mls r6, r8, r7, r6         /* Modulo 26 to wrap around alphabet if needed */
+    add r5, r6, #97            /* Converts the index back to lowercase ASCII character */
+
+    store:
+    strb r5, [r2], #1          /* Stores the (possibly encrypted) character in the cipherText buffer and moves the pointer */
+
+    b encrypt_loop             /* Repeats for the next character */
+
+    done:
+    mov r5, #0
+    strb r5, [r2]              /* Append null terminator to the encrypted string */
+    ldr r0, =cipherText        /* Returns pointer to start of the encrypted buffer in r0 (per function contract) */
 
     
     /* YOUR asmEncrypt CODE ABOVE THIS LINE! ^^^^^^^^^^^^^^^^^^^^^  */
